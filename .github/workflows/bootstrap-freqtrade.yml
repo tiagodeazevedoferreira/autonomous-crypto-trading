@@ -21,11 +21,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Clone Freqtrade upstream baseline
+        shell: bash
         run: |
           set -euo pipefail
           rm -rf .upstream-freqtrade
           git clone --depth 1 --branch develop https://github.com/freqtrade/freqtrade.git .upstream-freqtrade
-          UPSTREAM_SHA=$(git -C .upstream-freqtrade rev-parse HEAD)
+          UPSTREAM_SHA="$(git -C .upstream-freqtrade rev-parse HEAD)"
           echo "$UPSTREAM_SHA" > .freqtrade-upstream-commit
           rm -rf .upstream-freqtrade/.git
           cp -a .upstream-freqtrade/. .
@@ -34,7 +35,7 @@ jobs:
           cat > docs/UPSTREAM.md <<EOF
 # Freqtrade Upstream Baseline
 
-This repository is based on the Freqtrade `develop` branch.
+This repository is based on the Freqtrade develop branch.
 
 Upstream repository: https://github.com/freqtrade/freqtrade
 Baseline commit: $UPSTREAM_SHA
