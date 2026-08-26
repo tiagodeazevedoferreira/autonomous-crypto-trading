@@ -2,6 +2,9 @@ name: Bootstrap Freqtrade Foundation
 
 "on":
   workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/bootstrap-freqtrade.yml
 
 permissions:
   contents: write
