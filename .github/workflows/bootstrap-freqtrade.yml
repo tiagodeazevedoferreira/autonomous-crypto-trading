@@ -30,11 +30,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # IMPORTANT: stage upstream outside the checked-out repository.
-          # The previous implementation cloned into .upstream-freqtrade and then
-          # used rsync --delete against ./, which made rsync treat its own source
-          # directory as a destination-only directory and delete files while it
-          # was still scanning them. That produced the "file has vanished" errors.
+          # Stage upstream outside the checked-out repository.
           UPSTREAM_DIR="$(mktemp -d)"
           trap 'rm -rf "$UPSTREAM_DIR"' EXIT
 
@@ -43,11 +39,8 @@ jobs:
           printf '%s\n' "$UPSTREAM_SHA" > .freqtrade-upstream-commit
           rm -rf "$UPSTREAM_DIR/.git"
 
-          # Import the upstream source tree but deliberately exclude GitHub Actions
-          # workflows. The GitHub App used by this repository has contents:write but
-          # does not have the workflows permission required to create/update workflow files.
-          # Do NOT use --delete: this repository contains project-specific files that
-          # must survive the upstream import.
+          # Import upstream while preserving this project's own GitHub Actions.
+          # Do not use --delete: project-specific files must survive the import.
           rsync -a \
             --exclude='.git/' \
             --exclude='.github/workflows/' \
@@ -65,6 +58,13 @@ jobs:
             'The upstream code is retained as the initial trading-engine foundation. BrAInChain-specific functionality will be added in isolated modules and feature branches wherever practical.' \
             > docs/UPSTREAM.md
 
+          # The bootstrap may legitimately find no changes on a repeat run.
+          # Git exits with code 1 for "nothing to commit", which must not fail CI.
           git add -A
+          if git diff --cached --quiet; then
+            echo "No changes required; Freqtrade baseline is already synchronized."
+            exit 0
+          fi
+
           git commit -m "chore: bootstrap Freqtrade upstream foundation"
           git push origin HEAD:main
