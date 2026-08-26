@@ -1,6 +1,6 @@
 name: Bootstrap Freqtrade Foundation
 
-on:
+"on":
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,7 @@ jobs:
           fetch-depth: 0
 
       - name: Configure git
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -27,21 +28,21 @@ jobs:
           rm -rf .upstream-freqtrade
           git clone --depth 1 --branch develop https://github.com/freqtrade/freqtrade.git .upstream-freqtrade
           UPSTREAM_SHA="$(git -C .upstream-freqtrade rev-parse HEAD)"
-          echo "$UPSTREAM_SHA" > .freqtrade-upstream-commit
+          printf '%s\n' "$UPSTREAM_SHA" > .freqtrade-upstream-commit
           rm -rf .upstream-freqtrade/.git
           cp -a .upstream-freqtrade/. .
           rm -rf .upstream-freqtrade
           mkdir -p docs architecture configs data models tests
-          cat > docs/UPSTREAM.md <<EOF
-# Freqtrade Upstream Baseline
-
-This repository is based on the Freqtrade develop branch.
-
-Upstream repository: https://github.com/freqtrade/freqtrade
-Baseline commit: $UPSTREAM_SHA
-
-The upstream code is retained as the initial trading-engine foundation. BrAInChain-specific functionality will be added in isolated modules and feature branches wherever practical.
-EOF
+          printf '%s\n' \
+            '# Freqtrade Upstream Baseline' \
+            '' \
+            'This repository is based on the Freqtrade develop branch.' \
+            '' \
+            'Upstream repository: https://github.com/freqtrade/freqtrade' \
+            "Baseline commit: $UPSTREAM_SHA" \
+            '' \
+            'The upstream code is retained as the initial trading-engine foundation. BrAInChain-specific functionality will be added in isolated modules and feature branches wherever practical.' \
+            > docs/UPSTREAM.md
           git add -A
           git commit -m "chore: bootstrap Freqtrade upstream foundation"
           git push origin HEAD:main
