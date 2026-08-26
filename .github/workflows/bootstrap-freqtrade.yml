@@ -29,20 +29,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .upstream-freqtrade
-          git clone --depth 1 --branch develop https://github.com/freqtrade/freqtrade.git .upstream-freqtrade
-          UPSTREAM_SHA="$(git -C .upstream-freqtrade rev-parse HEAD)"
+
+          # IMPORTANT: stage upstream outside the checked-out repository.
+          # The previous implementation cloned into .upstream-freqtrade and then
+          # used rsync --delete against ./, which made rsync treat its own source
+          # directory as a destination-only directory and delete files while it
+          # was still scanning them. That produced the "file has vanished" errors.
+          UPSTREAM_DIR="$(mktemp -d)"
+          trap 'rm -rf "$UPSTREAM_DIR"' EXIT
+
+          git clone --depth 1 --branch develop https://github.com/freqtrade/freqtrade.git "$UPSTREAM_DIR"
+          UPSTREAM_SHA="$(git -C "$UPSTREAM_DIR" rev-parse HEAD)"
           printf '%s\n' "$UPSTREAM_SHA" > .freqtrade-upstream-commit
-          rm -rf .upstream-freqtrade/.git
+          rm -rf "$UPSTREAM_DIR/.git"
 
           # Import the upstream source tree but deliberately exclude GitHub Actions
           # workflows. The GitHub App used by this repository has contents:write but
           # does not have the workflows permission required to create/update workflow files.
-          # Keeping our .github/workflows directory intact also prevents upstream CI
-          # workflows from being accidentally installed into this project.
-          rsync -a --delete --exclude='.git/' --exclude='.github/workflows/' .upstream-freqtrade/ ./
+          # Do NOT use --delete: this repository contains project-specific files that
+          # must survive the upstream import.
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/workflows/' \
+            "$UPSTREAM_DIR/" ./
 
-          rm -rf .upstream-freqtrade
           mkdir -p docs architecture configs data models tests
           printf '%s\n' \
             '# Freqtrade Upstream Baseline' \
