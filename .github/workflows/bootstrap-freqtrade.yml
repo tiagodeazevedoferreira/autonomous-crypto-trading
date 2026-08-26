@@ -18,6 +18,7 @@ jobs:
       - name: Configure git
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -30,7 +31,14 @@ jobs:
           UPSTREAM_SHA="$(git -C .upstream-freqtrade rev-parse HEAD)"
           printf '%s\n' "$UPSTREAM_SHA" > .freqtrade-upstream-commit
           rm -rf .upstream-freqtrade/.git
-          cp -a .upstream-freqtrade/. .
+
+          # Import the upstream source tree but deliberately exclude GitHub Actions
+          # workflows. The GitHub App used by this repository has contents:write but
+          # does not have the workflows permission required to create/update workflow files.
+          # Keeping our .github/workflows directory intact also prevents upstream CI
+          # workflows from being accidentally installed into this project.
+          rsync -a --delete --exclude='.git/' --exclude='.github/workflows/' .upstream-freqtrade/ ./
+
           rm -rf .upstream-freqtrade
           mkdir -p docs architecture configs data models tests
           printf '%s\n' \
@@ -43,6 +51,7 @@ jobs:
             '' \
             'The upstream code is retained as the initial trading-engine foundation. BrAInChain-specific functionality will be added in isolated modules and feature branches wherever practical.' \
             > docs/UPSTREAM.md
+
           git add -A
           git commit -m "chore: bootstrap Freqtrade upstream foundation"
           git push origin HEAD:main
