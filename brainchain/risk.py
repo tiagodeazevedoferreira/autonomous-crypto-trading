@@ -17,11 +17,24 @@ class RiskGate:
     Provider signals can contribute evidence but can never bypass this gate.
     """
 
-    def __init__(self, *, min_confidence: float = 0.60, max_signal_age_seconds: int = 900) -> None:
+    def __init__(
+        self,
+        *,
+        min_confidence: float = 0.60,
+        min_sources: int = 2,
+        max_signal_age_seconds: int = 900,
+    ) -> None:
         self.min_confidence = min_confidence
+        self.min_sources = min_sources
         self.max_signal_age_seconds = max_signal_age_seconds
 
-    def evaluate(self, fused: FusedSignal, *, signal_age_seconds: float | None = None, dry_run: bool = True) -> RiskDecision:
+    def evaluate(
+        self,
+        fused: FusedSignal,
+        *,
+        signal_age_seconds: float | None = None,
+        dry_run: bool = True,
+    ) -> RiskDecision:
         reasons = list(fused.reasons)
         if fused.blocked:
             reasons.append("signal fusion blocked execution")
@@ -29,6 +42,8 @@ class RiskGate:
             reasons.append("no actionable direction")
         if fused.confidence < self.min_confidence:
             reasons.append("risk confidence threshold not met")
+        if len(fused.sources) < self.min_sources:
+            reasons.append("independent evidence threshold not met")
         if signal_age_seconds is not None and signal_age_seconds > self.max_signal_age_seconds:
             reasons.append("signal is stale")
         if not dry_run:
