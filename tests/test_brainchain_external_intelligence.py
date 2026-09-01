@@ -32,16 +32,15 @@ class ExternalIntelligenceTests(unittest.TestCase):
         decision = RiskGate().evaluate(fused, dry_run=True)
         self.assertFalse(decision.allowed)
 
-    def test_single_strong_signal_is_still_blocked_by_missing_independent_evidence(self) -> None:
+    def test_single_strong_signal_is_blocked_by_missing_independent_evidence(self) -> None:
         now = datetime.now(timezone.utc)
         fused = SignalFusion(min_confidence=0.60).fuse([
             ExternalSignal("BTC/USD", now, Direction.LONG, 0.95, source="doto_ai")
         ])
-        # Phase 1 keeps the authorization model conservative: one provider is
-        # evidence, not sufficient proof for an autonomous trade.
         self.assertEqual(fused.direction, Direction.LONG)
         decision = RiskGate().evaluate(fused, dry_run=True)
-        self.assertTrue(decision.allowed)
+        self.assertFalse(decision.allowed)
+        self.assertIn("independent evidence threshold not met", decision.reasons)
 
 
 if __name__ == "__main__":
